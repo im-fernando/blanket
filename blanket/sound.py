@@ -116,9 +116,9 @@ class Sound(GObject.Object):
             # Remove from settings
             Settings.get().remove_custom_audio(self.name)
 
-            # TODO: Properly remove GStreamer
             # Remove from GStreamer
             self._sounbin.set_state(Gst.State.NULL)  # type: ignore
+            MainPlayer.get().pipe.remove(self._sounbin)
             MainPlayer.get().mixer.release_request_pad(self._sink_pad)  # type: ignore
 
     def _playing_changed(self, _object, _pspec):
