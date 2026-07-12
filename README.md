@@ -34,7 +34,9 @@ Improve focus and increase your productivity by listening to different sounds. B
 | NixOS | [`blanket`](https://search.nixos.org/packages?channel=unstable&show=blanket&from=0&size=50&sort=relevance&type=packages&query=blanket) | onny |
 | openSUSE  | [`blanket`](https://build.opensuse.org/package/show/multimedia%3Aapps/blanket) | [Michael Vetter](https://github.com/jubalh) |
 | Ubuntu (PPA) | [`Stable Releases`](https://launchpad.net/~apandada1/+archive/ubuntu/blanket), [`Daily Builds`](https://launchpad.net/~apandada1/+archive/ubuntu/blanket-daily) | [Archisman Panigrahi](https://github.com/apandada1) |
+| Void Linux | [`blanket`](https://voidlinux.org/packages/?q=blanket) | [ndpm13](https://github.com/ndpm13) |
 | MX Linux | [`blanket`](http://mxrepo.com/mx/repo/pool/main/b/blanket/) | [SwampRabbit](https://github.com/SwampRabbit) |
+| Debian (trixie) | [`blanket`](https://packages.debian.org/en/trixie/blanket) | [Debian GNOME Team](https://salsa.debian.org/gnome-team) |
 
 ### Build from source
 
@@ -50,11 +52,17 @@ You can clone and run from GNOME Builder.
 - Meson `meson`
 - Ninja `ninja`
 
-Alternatively, use the following commands to build it with meson.
+Alternatively, use the following commands to build it with meson to use CLI:
 ```bash
-meson builddir --prefix=/usr/local
-sudo ninja -C builddir install
+meson setup builddir --prefix=/usr/local
+meson compile -C builddir
+sudo meson install -C builddir
 ```
+
+After installation, `blanket` should be available from any terminal.
+
+To keep using terminal, end the argument with `&`. For example: `blanket --play rain &`
+To completely run in the background even after terminal is closed: `systemd-run --user --scope blanket --play rain &`
 
 ## Translations
 Blanket is translated into several languages. If your language is missing or incomplete, please help to [translate Blanket in Weblate](https://hosted.weblate.org/engage/blanket/).
