@@ -8,19 +8,21 @@ import os
 import sys
 
 if getattr(sys, "frozen", False):
-    # Packaged: assets sit next to the executable.
-    HERE = os.path.dirname(os.path.abspath(sys.executable))
-    REPO = HERE
-    STAGE = HERE
+    # Packaged by PyInstaller: bundled data lives under sys._MEIPASS.
+    STAGE = sys._MEIPASS  # type: ignore[attr-defined]
+    REPO = STAGE
+    # Our merged schema (system + Blanket) is in a private dir (see spec).
+    schema_dir = os.path.join(STAGE, "blanket_schemas")
 else:
     # Source run: this file lives in build-aux/windows/, assets in winbuild/.
     HERE = os.path.dirname(os.path.abspath(__file__))
     REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
     STAGE = os.path.join(REPO, "winbuild")
     sys.path.insert(0, REPO)
+    schema_dir = os.path.join(STAGE, "share", "glib-2.0", "schemas")
 
-# GSettings needs the compiled schema; set before GLib is first used.
-schema_dir = os.path.join(STAGE, "share", "glib-2.0", "schemas")
+# GSettings needs the compiled schema; prepend before GLib is first used so
+# our dir wins over any bundled system-only schema source.
 if os.path.isdir(schema_dir):
     existing = os.environ.get("GSETTINGS_SCHEMA_DIR", "")
     os.environ["GSETTINGS_SCHEMA_DIR"] = (

@@ -39,7 +39,12 @@ glib-compile-resources "$RES/blanket.gresource.xml" \
   --sourcedir="$UI" \
   --sourcedir="$RES"
 
-echo ">> Compiling GSettings schema"
+echo ">> Compiling GSettings schema (app + system, merged into one file)"
+# Bundle the system schemas (org.gtk.*, etc.) together with the app schema so
+# a single gschemas.compiled satisfies both GTK/Adwaita and Blanket.
+PREFIX="${MINGW_PREFIX:-/ucrt64}"
+cp "$PREFIX"/share/glib-2.0/schemas/*.gschema.xml "$SCHEMADIR/" 2>/dev/null || true
+cp "$PREFIX"/share/glib-2.0/schemas/*.enums.xml "$SCHEMADIR/" 2>/dev/null || true
 cp "$ROOT/data/com.rafaelmardojai.Blanket.gschema.xml" "$SCHEMADIR/"
 glib-compile-schemas "$SCHEMADIR"
 
