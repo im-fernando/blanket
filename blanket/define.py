@@ -33,13 +33,11 @@ SOUNDS = [
             {"name": "fireplace", "title": _("Fireplace")},
         ],
     },
-    {
-        "name": _("Noise"),
-        "sounds": [
-            {"name": "pink-noise", "title": _("Pink Noise")},
-            {"name": "white-noise", "title": _("White Noise")},
-        ],
-    },
+]
+
+NOISES = [
+    {"name": "pink-noise", "title": _("Pink Noise")},
+    {"name": "white-noise", "title": _("White Noise")},
 ]
 
 AUTHORS = ["Rafael Mardojai CM"]

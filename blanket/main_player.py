@@ -1,7 +1,7 @@
 # Copyright 2020-2022 Rafael Mardojai CM
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from gi.repository import Gio, GObject, Gtk
+from gi.repository import Gio, GObject, Gst, GstAudio, Gtk
 
 from blanket.preset import Preset
 from blanket.settings import Settings
@@ -17,6 +17,7 @@ class MainPlayer(GObject.GObject, Gio.ListModel):
     _instance = None
     _cookie = 0
     _sounds = []  # Sound list
+    _initial_seek = False
 
     __gtype_name__ = "MainPlayer"
     __gsignals__ = {
@@ -44,6 +45,53 @@ class MainPlayer(GObject.GObject, Gio.ListModel):
 
         self.__add_item = GObject.GObject()  # Fake sound that adds new sounds
         self.__add_item.playing = False  # type: ignore
+
+        # GStreamer pipeline
+        self.pipe = Gst.Pipeline.new('blanket')
+
+        # Mixer element
+        self.mixer = Gst.ElementFactory.make('adder', 'mixer')
+        # Convert element
+        convert = Gst.ElementFactory.make('audioconvert', 'convert')
+        # Sink element
+        sink = Gst.ElementFactory.make('playsink', 'playsink')
+
+        if self.mixer and convert and sink:
+            self.pipe.add(self.mixer)
+            self.pipe.add(convert)
+            self.pipe.add(sink)
+
+            # Link elements
+            self.mixer.link(convert)
+            convert.link(sink)
+
+            # Make main player control sink volume
+            sink.bind_property(
+                'volume',
+                self,
+                'volume',
+                GObject.BindingFlags.BIDIRECTIONAL,
+                self._vol_to_sink,
+                self._vol_to_ui,
+            )
+
+            # Start the playback
+            self.pipe.set_state(Gst.State.PLAYING)
+            self.pipe.set_state(Gst.State.PAUSED)  # Start paused
+
+    def _vol_to_sink(self, _bind, from_val: float):
+        return GstAudio.StreamVolume.convert_volume(
+            GstAudio.StreamVolumeFormat.LINEAR,
+            GstAudio.StreamVolumeFormat.CUBIC,
+            from_val,
+        )
+
+    def _vol_to_ui(self, _bind, from_val: float):
+        return GstAudio.StreamVolume.convert_volume(
+            GstAudio.StreamVolumeFormat.CUBIC,
+            GstAudio.StreamVolumeFormat.LINEAR,
+            from_val,
+        )
 
     def mute_vol_zero(self):
         for sound in self:
@@ -114,6 +162,19 @@ class MainPlayer(GObject.GObject, Gio.ListModel):
             self._inhibit(self.playing)
         else:
             self._inhibit(False)
+
+        # Seek once for segment events to be sent
+        if not self._initial_seek:
+            self.pipe.seek_simple(
+                Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.SEGMENT, 0
+            )
+            self._initial_seek = True
+
+        # Toggle pipeline playing state
+        if self.playing:
+            self.pipe.set_state(Gst.State.PLAYING)
+        else:
+            self.pipe.set_state(Gst.State.PAUSED)
 
     def _on_preset_changed(self, _settings, preset_id):
         self.emit("preset-changed", Preset(preset_id))
