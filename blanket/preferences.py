@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import os
+import sys
 from gettext import gettext as _
 from random import randint
 
@@ -70,6 +71,12 @@ class PreferencesDialog(Adw.PreferencesDialog):
             self.autostart_failed = False
             return
 
+        # Windows has no freedesktop background portal; use the per-user
+        # "Run" registry key instead.
+        if sys.platform.startswith("win"):
+            self.__windows_autostart(active)
+            return
+
         bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         proxy = Gio.DBusProxy.new_sync(
             bus,
@@ -120,6 +127,44 @@ class PreferencesDialog(Adw.PreferencesDialog):
             error_dialog.present(self.window)
             self.autostart_failed = True
             self.autostart.set_active(self.autostart_saved)
+
+    def __windows_autostart(self, active: bool):
+        import winreg
+
+        run_key = r"Software\Microsoft\Windows\CurrentVersion\Run"
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, run_key, 0, winreg.KEY_SET_VALUE
+            ) as key:
+                if active:
+                    winreg.SetValueEx(
+                        key, "Blanket", 0, winreg.REG_SZ,
+                        self.__windows_launch_command(),
+                    )
+                else:
+                    try:
+                        winreg.DeleteValue(key, "Blanket")
+                    except FileNotFoundError:
+                        pass
+            self.autostart.set_active(active)
+            Settings.get().autostart = active
+        except OSError as e:
+            print("Windows autostart failed:", e)
+            error_dialog = Adw.AlertDialog.new(
+                _("Request error"), _("The autostart request failed.")
+            )
+            error_dialog.add_response("ok", _("Ok"))
+            error_dialog.present(self.window)
+            self.autostart_failed = True
+            self.autostart.set_active(self.autostart_saved)
+
+    def __windows_launch_command(self) -> str:
+        # When frozen (packaged .exe), sys.executable is blanket.exe itself.
+        if getattr(sys, "frozen", False):
+            return f'"{sys.executable}" --hidden'
+        # Running from source: relaunch the interpreter with the entry script.
+        script = os.path.abspath(sys.argv[0])
+        return f'"{sys.executable}" "{script}" --hidden'
 
     def __receive_autostart(self, *args):
         self.window.present()

@@ -6,6 +6,11 @@ from gettext import gettext as _
 from typing import cast
 import gi
 
+# Some integrations are only available on Linux/BSD (D-Bus session bus for
+# MPRIS, freedesktop power-profiles). Guard them so the app runs on Windows
+# and macOS where those services don't exist.
+_HAS_DBUS = not sys.platform.startswith(("win", "darwin"))
+
 try:
     gi.require_version("Adw", "1")
     gi.require_version("Gdk", "4.0")
@@ -48,11 +53,13 @@ class Application(Adw.Application):
         # Connect app shutdown signal
         self.connect("shutdown", self._on_shutdown)
 
-        # Track power status
+        # Track power status. PowerProfileMonitor is backed by a freedesktop
+        # D-Bus service and may be unavailable (None) on Windows/macOS.
         self.power_monitor = Gio.PowerProfileMonitor.dup_default()
-        self.power_monitor.connect(
-            "notify::power-saver-enabled", self._on_notify_power_saver_enabled
-        )
+        if self.power_monitor is not None:
+            self.power_monitor.connect(
+                "notify::power-saver-enabled", self._on_notify_power_saver_enabled
+            )
 
         # Add --hidden command line option
         self.add_main_option(
@@ -131,8 +138,13 @@ class Application(Adw.Application):
         ):
             style_manager.props.color_scheme = Adw.ColorScheme.FORCE_DARK
 
-        # Start MPRIS server
-        self.mpris = MPRIS(self)
+        # Start MPRIS server (Linux/BSD only; requires the D-Bus session bus)
+        self.mpris = None
+        if _HAS_DBUS:
+            try:
+                self.mpris = MPRIS(self)
+            except Exception as exc:
+                print("MPRIS unavailable, skipping:", exc)
 
         self.setup_actions()
 
