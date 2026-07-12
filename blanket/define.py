@@ -14,6 +14,7 @@ SOUNDS = [
             {"name": "wind", "title": _("Wind")},
             {"name": "waves", "title": _("Waves")},
             {"name": "stream", "title": _("Stream")},
+            {"name": "desert", "title": _("Desert")},
             {"name": "birds", "title": _("Birds")},
             {"name": "summer-night", "title": _("Summer Night")},
             {"name": "cat-purr", "title": _("Cat Purr")},
