@@ -149,21 +149,10 @@ class MainPlayer(GObject.GObject, Gio.ListModel):
 
     def _on_playing(self, _player, _param):
         """
-        Toggle suspension inhibition when playing
+        Start/stop the pipeline (and toggle suspension inhibition) when the
+        playing state changes.
         """
-        if Settings.get().inhibit_suspension:
-            self._inhibit(self.playing)
-
-    def _on_settings_inhibition(self, _settings: Settings, _key: str):
-        """
-        Toggle suspension inhibition when settings changes
-        """
-        if Settings.get().inhibit_suspension:
-            self._inhibit(self.playing)
-        else:
-            self._inhibit(False)
-
-        # Seek once for segment events to be sent
+        # Seek once for segment events to be sent (enables per-sound looping)
         if not self._initial_seek:
             self.pipe.seek_simple(
                 Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.SEGMENT, 0
@@ -175,6 +164,19 @@ class MainPlayer(GObject.GObject, Gio.ListModel):
             self.pipe.set_state(Gst.State.PLAYING)
         else:
             self.pipe.set_state(Gst.State.PAUSED)
+
+        # Toggle suspension inhibition
+        if Settings.get().inhibit_suspension:
+            self._inhibit(self.playing)
+
+    def _on_settings_inhibition(self, _settings: Settings, _key: str):
+        """
+        Toggle suspension inhibition when the setting changes
+        """
+        if Settings.get().inhibit_suspension:
+            self._inhibit(self.playing)
+        else:
+            self._inhibit(False)
 
     def _on_preset_changed(self, _settings, preset_id):
         self.emit("preset-changed", Preset(preset_id))
